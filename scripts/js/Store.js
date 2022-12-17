@@ -33,10 +33,13 @@ define(["require", "exports"], function (require, exports) {
         }
         set(property, callback) {
             if (__classPrivateFieldGet(this, _Store_data, "f").hasOwnProperty(property)) {
-                const newValue = callback(__classPrivateFieldGet(this, _Store_data, "f")[property].value);
-                __classPrivateFieldGet(this, _Store_data, "f")[property].pendingValue = newValue;
-                __classPrivateFieldSet(this, _Store_hasUpdate, true, "f");
-                return;
+                const { value, pendingValue } = __classPrivateFieldGet(this, _Store_data, "f")[property];
+                const newValue = callback(pendingValue !== null && pendingValue !== void 0 ? pendingValue : value); // Provide latest value
+                if (newValue !== value) {
+                    __classPrivateFieldGet(this, _Store_data, "f")[property].pendingValue = newValue;
+                    __classPrivateFieldSet(this, _Store_hasUpdate, true, "f");
+                }
+                return false;
             }
             throw new Error(`${this.constructor.name}: The data "${property}" does not exist`);
         }

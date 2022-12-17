@@ -17,12 +17,16 @@ export class Store extends EventTarget{
 		throw new Error(`${this.constructor.name}: Store has been initialized`)
 	}
 
-	set(property: string, callback: SetStateCallback){
+	set(property: string, callback: SetStateCallback): boolean{
 		if(this.#data.hasOwnProperty(property)){
-			const newValue: any = callback(this.#data[property].value)
-			this.#data[property].pendingValue = newValue
-			this.#hasUpdate = true
-			return
+			const {value, pendingValue} = this.#data[property]
+			const newValue: any = callback(pendingValue?? value)	// Provide latest value
+
+			if(newValue !== value){
+				this.#data[property].pendingValue = newValue
+				this.#hasUpdate = true
+			}
+			return false
 		}
 		throw new Error(`${this.constructor.name}: The data "${property}" does not exist`)
 	}

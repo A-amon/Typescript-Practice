@@ -1,11 +1,9 @@
 <div>
-	<h1>Page 2 {{counter}}</h1>
+	<h1>Page 2 {{counter}} {{match}}</h1>
 	<button id="test-btn">Click</button>
 </div>
 <script>
 	document.querySelector("#test-btn")?.addEventListener("click", () => {
-		game.func(() => {
-			game.store.set("counter", counter => counter + 1)
-		})()
+		game.updateAfter(() => game.store.set("counter", counter => counter + 1))
 	})
 </script>

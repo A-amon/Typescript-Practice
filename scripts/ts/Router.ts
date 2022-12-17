@@ -6,7 +6,6 @@ export class Router extends EventTarget{
 	#defaultRoute: string
 	#currentRoute: string
 	#routes: Record<string, RouteOptions> = {}
-	#gameObjects: GameObject[]
 
 	constructor(appName: string){
 		super()
@@ -47,11 +46,8 @@ export class Router extends EventTarget{
 		return this.#currentRoute? [this.#currentRoute, this.#routes[this.#currentRoute]]: null
 	}
 
-	addGameObject(gameObject: GameObject): GameObject | null {
-		const {name} = gameObject
-		if(this.#routes.hasOwnProperty(name)){
-
-		}
-		throw `${this.constructor.name}: The route name "${name}" is not registered`
+	getGameObject(name: string): GameObject[]{
+		const gameObjects = this.#routes[this.#currentRoute].gameObjects
+		return gameObjects?.filter(gameObject => gameObject.getName() === name)??[]
 	}
 }

@@ -11,7 +11,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
 };
 define(["require", "exports"], function (require, exports) {
     "use strict";
-    var _Router_appName, _Router_defaultRoute, _Router_currentRoute, _Router_routes, _Router_gameObjects;
+    var _Router_appName, _Router_defaultRoute, _Router_currentRoute, _Router_routes;
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Router = void 0;
     class Router extends EventTarget {
@@ -21,7 +21,6 @@ define(["require", "exports"], function (require, exports) {
             _Router_defaultRoute.set(this, void 0);
             _Router_currentRoute.set(this, void 0);
             _Router_routes.set(this, {});
-            _Router_gameObjects.set(this, void 0);
             __classPrivateFieldSet(this, _Router_appName, appName, "f");
         }
         addRoutes(routes) {
@@ -52,13 +51,12 @@ define(["require", "exports"], function (require, exports) {
         getCurrentRoute() {
             return __classPrivateFieldGet(this, _Router_currentRoute, "f") ? [__classPrivateFieldGet(this, _Router_currentRoute, "f"), __classPrivateFieldGet(this, _Router_routes, "f")[__classPrivateFieldGet(this, _Router_currentRoute, "f")]] : null;
         }
-        addGameObject(gameObject) {
-            const { name } = gameObject;
-            if (__classPrivateFieldGet(this, _Router_routes, "f").hasOwnProperty(name)) {
-            }
-            throw `${this.constructor.name}: The route name "${name}" is not registered`;
+        getGameObject(name) {
+            var _a;
+            const gameObjects = __classPrivateFieldGet(this, _Router_routes, "f")[__classPrivateFieldGet(this, _Router_currentRoute, "f")].gameObjects;
+            return (_a = gameObjects === null || gameObjects === void 0 ? void 0 : gameObjects.filter(gameObject => gameObject.getName() === name)) !== null && _a !== void 0 ? _a : [];
         }
     }
     exports.Router = Router;
-    _Router_appName = new WeakMap(), _Router_defaultRoute = new WeakMap(), _Router_currentRoute = new WeakMap(), _Router_routes = new WeakMap(), _Router_gameObjects = new WeakMap();
+    _Router_appName = new WeakMap(), _Router_defaultRoute = new WeakMap(), _Router_currentRoute = new WeakMap(), _Router_routes = new WeakMap();
 });
