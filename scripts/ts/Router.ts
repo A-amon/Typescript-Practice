@@ -6,6 +6,7 @@ export class Router extends EventTarget{
 	#defaultRoute: string
 	#currentRoute: string
 	#routes: Record<string, RouteOptions> = {}
+	#imageBuffer: Record<string, {isLoaded: boolean, image: HTMLImageElement}> = {}
 
 	constructor(appName: string){
 		super()
@@ -20,7 +21,18 @@ export class Router extends EventTarget{
 		if(!this.#routes.hasOwnProperty(name)){
 			this.#routes = {...this.#routes, [name]:{...(options || {})}}
 
-			if(options?.default == true || Object.keys(this.#routes).length === 1){
+			options?.tileImages && Object.keys(options?.tileImages).forEach(imagePath => {
+				this.#loadImage(imagePath)
+			})
+
+			options?.gameObjects?.forEach(gameObject => {
+				const {imagePath} = gameObject.getOptions()
+				if(imagePath){
+					this.#loadImage(imagePath)
+				}
+			})
+
+			if(options?.default === true || Object.keys(this.#routes).length === 1){
 				this.#defaultRoute = name
 			}
 			return
@@ -49,5 +61,36 @@ export class Router extends EventTarget{
 	getGameObject(name: string): GameObject[]{
 		const gameObjects = this.#routes[this.#currentRoute].gameObjects
 		return gameObjects?.filter(gameObject => gameObject.getName() === name)??[]
+	}
+
+	getImage(path: string): Promise<HTMLImageElement>{
+		const imageData = this.#imageBuffer[path]
+		return new Promise((resolve, reject) => {
+			if(imageData){
+				const interval = setInterval(() => {
+					if(imageData.isLoaded){
+						resolve(imageData.image)
+						clearInterval(interval)
+					}
+				}, 1)
+			}
+			else{
+				reject()
+			}
+		})
+	}
+
+	#loadImage(path: string){
+		const image = new Image()
+		image.src = path
+		this.#imageBuffer[path] = {isLoaded:false, image}
+
+		image.onload = () => {
+			this.#imageBuffer[path].isLoaded = true
+		}
+		image.onerror = () => {
+			delete this.#imageBuffer[path]
+			throw `${this.constructor.name}: Failed to load image from this path: "${path}"`
+		}
 	}
 }

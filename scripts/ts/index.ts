@@ -13,10 +13,34 @@ game.router.addRoutes({
 		tilesYTotal:10,
 		tileHeight:50,
 		tileWidth:50,
+		tileImages:{
+			"/assets/tiles/tile-2.png":[
+				[0, 0, 9, 9]
+			],
+			"/assets/tiles/plain.png":[
+				[1, 5],
+				["column", 3]
+			],
+			"/assets/tiles/tile-1.png":[
+				[0, 0, 2, 4]
+			],
+		},
 		position:["right", "top"],
 		gameObjects:[
 			new GameObject("Knight", 5, {
-				imagePath:"/assets/knight.png"
+				imagePath:"/assets/knight.png",
+				onCollide:(name) => {
+					game.updateAfter(() => game.store.set("collision", (collision) => {
+						if(collision.name){
+							return {name, count: collision.count + 1}
+						}
+						return {name, count: 1}
+					}))
+				}
+			}),
+			new GameObject("Tree", [3, 3], {
+				imagePath:"/assets/tree.png",
+				isCollidable:true
 			})
 		]
 	}
@@ -25,7 +49,8 @@ game.router.addRoutes({
 game
 .start()
 .store.initialize({
-	"counter": 0
+	"counter": 0,
+	"collision": {}
 })
 
 const btnLinks = document.querySelectorAll(".btn-link")

@@ -41,7 +41,8 @@ export class Store extends EventTarget{
 	update(){
 		if(this.#hasUpdate){
 			Object.keys(this.#data).forEach((key: string) => {
-				this.#data[key] = {value: this.#data[key].pendingValue}
+				const {pendingValue, value} = this.#data[key]
+				this.#data[key] = {value: pendingValue?? value}
 			})
 			this.#hasUpdate = false
 		}

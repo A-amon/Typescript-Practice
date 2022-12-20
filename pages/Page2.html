@@ -1,9 +1,16 @@
 <div>
 	<h1>Page 2 {{counter}} {{match}}</h1>
+	<p id="collision-message"></p>
 	<button id="test-btn">Click</button>
 </div>
 <script>
-	document.querySelector("#test-btn")?.addEventListener("click", () => {
-		game.updateAfter(() => game.store.set("counter", counter => counter + 1))
-	})
+	(() => {
+		document.querySelector("#test-btn")?.addEventListener("click", () => {
+			game.updateAfter(() => game.store.set("counter", counter => counter + 1))
+		})
+		const collision = game.store.get("collision")
+		if(collision.name){
+			document.querySelector("#collision-message").textContent = `You hit a ${collision.name} ${collision.count} time${collision.count > 1?'s':''}!`
+		}
+	})()
 </script>

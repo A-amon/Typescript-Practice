@@ -6,9 +6,14 @@ declare global{
 }
 
 //ROUTE
-export type PositionX = "left" | "right" | "center"
-export type PositionY = "top" | "bottom" | "center"
-export type Position = [PositionX, PositionY]
+export type RoutePosition = ["left" | "right" | "center", "top" | "bottom" | "center"]
+
+/**
+ * ["row" | "column", number] - Fill specified row/column  
+ * [columnIndex, rowIndex] - Draw image at this coordinate  
+ * [columnIndexA, rowIndexA, columnIndexB, rowIndexB] - Fill specified block
+ */
+export type TileImagePosition = ["row" | "column", number] | [number, number] | [number, number, number, number]
 
 export interface TilesOptions {
 	tilesXTotal?: number,
@@ -16,13 +21,13 @@ export interface TilesOptions {
 	tileHeight?:number,
 	tileWidth?:number,
 	tileColor?: string,
-	tileImagePath?: string
+	tileImages?: Record<string, TileImagePosition[]>
 }
 
 export interface RouteOptions extends TilesOptions{
 	default?: boolean,
 	layoutPath?: string,
-	position?: Position,
+	position?: RoutePosition,
 	gameObjects?: GameObject[]
 }
 
@@ -31,10 +36,13 @@ export interface GameObjectOptions{
 	height?: number,
 	width?: number,
 	imagePath: string,
-	isCollidable?: boolean
+	isCollidable?: boolean,
+	onCollide?: (gameObjectName: string) => void
 }
 
 export type SetPositionCallback = (position:[number, number]) => number | [number, number]
+
+export type GameObjectPosition = [number, number]
 
 //STORE
 export interface State {

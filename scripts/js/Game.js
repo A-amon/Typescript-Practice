@@ -36,6 +36,7 @@ define(["require", "exports", "./Constants", "./Router", "./Store"], function (r
             }
             const newCanvas = document.createElement("canvas");
             __classPrivateFieldSet(this, _Game_canvas, newCanvas, "f");
+            __classPrivateFieldGet(this, _Game_main, "f").appendChild(__classPrivateFieldGet(this, _Game_canvas, "f"));
             __classPrivateFieldGet(this, _Game_instances, "m", _Game_resizeCanvas).call(this);
             window.addEventListener("resize", () => __classPrivateFieldGet(this, _Game_instances, "m", _Game_resizeCanvas).call(this));
             this.router.navigateTo();
@@ -48,11 +49,15 @@ define(["require", "exports", "./Constants", "./Router", "./Store"], function (r
     }
     exports.Game = Game;
     _Game_options = new WeakMap(), _Game_main = new WeakMap(), _Game_canvas = new WeakMap(), _Game_instances = new WeakSet(), _Game_drawCanvas = function _Game_drawCanvas(options) {
-        const context = __classPrivateFieldGet(this, _Game_canvas, "f").getContext("2d");
-        context.clearRect(0, 0, __classPrivateFieldGet(this, _Game_canvas, "f").width, __classPrivateFieldGet(this, _Game_canvas, "f").height);
+        const _canvas = document.createElement("canvas");
+        const _context = _canvas.getContext("2d");
+        _canvas.height = __classPrivateFieldGet(this, _Game_main, "f").getBoundingClientRect().height;
+        _canvas.width = __classPrivateFieldGet(this, _Game_main, "f").getBoundingClientRect().width;
+        // const context = this.#canvas.getContext("2d")
+        // context!.clearRect(0, 0, this.#canvas.width, this.#canvas.height)
         const { TILES_X_TOTAL, TILES_Y_TOTAL, TILE_HEIGHT, TILE_WIDTH, TILE_COLOR } = Constants_1.constants.TilesOptions;
         const { POSITION } = Constants_1.constants.RouteOptions;
-        const { tilesXTotal = TILES_X_TOTAL, tilesYTotal = TILES_Y_TOTAL, tileHeight = TILE_HEIGHT, tileWidth = TILE_WIDTH, tileColor = TILE_COLOR, position = POSITION, gameObjects } = options;
+        const { tilesXTotal = TILES_X_TOTAL, tilesYTotal = TILES_Y_TOTAL, tileHeight = TILE_HEIGHT, tileWidth = TILE_WIDTH, tileColor = TILE_COLOR, tileImages = {}, position = POSITION, gameObjects } = options;
         let positionOffset = { x: 0, y: 0 };
         if (position[0] === "center") {
             positionOffset.x = 0.5 * __classPrivateFieldGet(this, _Game_canvas, "f").width - (0.5 * tileWidth * tilesXTotal);
@@ -72,37 +77,93 @@ define(["require", "exports", "./Constants", "./Router", "./Store"], function (r
                     x: positionOffset.x + col * tileWidth,
                     y: positionOffset.y + row * tileHeight
                 };
-                context.beginPath();
-                context.fillRect(tilePosition.x, tilePosition.y, tileWidth, tileHeight);
-                context.fillStyle = tileColor;
+                _context.beginPath();
+                _context.fillRect(tilePosition.x, tilePosition.y, tileWidth, tileHeight);
+                _context.fillStyle = tileColor;
+                let imageStack = [];
+                Object.keys(tileImages).forEach(imagePath => {
+                    tileImages[imagePath].forEach(position => {
+                        if ((position[0] === "row" && position[1] === row) ||
+                            (position[0] === "column" && position[1] === col) ||
+                            (position[0] === col && position[1] === row) ||
+                            (position.length === 4 && (col >= position[0] && row >= position[1]) && (col <= position[2] && row <= position[3]))) {
+                            imageStack.push(imagePath);
+                            this.router.getImage(imagePath)
+                                .then((image) => {
+                                const interval = setInterval(() => {
+                                    if (imageStack[0] === imagePath) {
+                                        _context.drawImage(image, tilePosition.x, tilePosition.y, tileWidth, tileHeight);
+                                        imageStack.shift();
+                                        clearInterval(interval);
+                                    }
+                                }, 1);
+                            })
+                                .catch(() => {
+                                imageStack.shift();
+                            });
+                        }
+                    });
+                });
                 if (gameObjects) {
                     const _gameObjects = gameObjects.filter(gameObject => {
-                        const [x, y] = gameObject.getPosition();
+                        const [x, y] = gameObject.getPosition().current;
                         return (x === col + 1) && (y === row + 1);
                     });
+                    const collidableObject = _gameObjects.find(gameObject => gameObject.getOptions().isCollidable);
                     for (let gameObject of _gameObjects) {
                         const { HEIGHT, WIDTH } = Constants_1.constants.GameObjectOptions;
-                        const { height = HEIGHT, width = WIDTH, imagePath } = gameObject.getOptions();
-                        const image = new Image();
-                        image.src = imagePath;
-                        image.onload = () => {
-                            context.drawImage(image, tilePosition.x + tileWidth / 2 - width / 2, tilePosition.y + tileHeight / 2 - height / 2, width, height);
-                        };
+                        const { height = HEIGHT, width = WIDTH, imagePath, onCollide } = gameObject.getOptions();
+                        const { previous, current } = gameObject.getPosition();
+                        if (collidableObject && previous !== current) {
+                            gameObject.setPosition(() => previous);
+                            onCollide && onCollide(collidableObject.getName());
+                        }
+                        else {
+                            imageStack.push(imagePath);
+                            this.router.getImage(imagePath)
+                                .then((image) => {
+                                const interval = setInterval(() => {
+                                    if (imageStack[0] === imagePath) {
+                                        _context.drawImage(image, tilePosition.x + tileWidth / 2 - width / 2, tilePosition.y + tileHeight / 2 - height / 2, width, height);
+                                        imageStack.shift();
+                                        clearInterval(interval);
+                                    }
+                                }, 1);
+                            })
+                                .catch(() => {
+                                imageStack.shift();
+                            });
+                        }
                     }
                 }
             }
         }
+        __classPrivateFieldGet(this, _Game_main, "f").appendChild(_canvas);
+        __classPrivateFieldGet(this, _Game_canvas, "f").remove();
+        __classPrivateFieldSet(this, _Game_canvas, _canvas, "f");
         return this;
     }, _Game_resizeCanvas = function _Game_resizeCanvas() {
         __classPrivateFieldGet(this, _Game_canvas, "f").height = __classPrivateFieldGet(this, _Game_main, "f").getBoundingClientRect().height;
         __classPrivateFieldGet(this, _Game_canvas, "f").width = __classPrivateFieldGet(this, _Game_main, "f").getBoundingClientRect().width;
-        __classPrivateFieldGet(this, _Game_instances, "m", _Game_render).call(this, true);
+        const currentRoute = this.router.getCurrentRoute();
+        currentRoute && __classPrivateFieldGet(this, _Game_instances, "m", _Game_drawCanvas).call(this, currentRoute[1]);
     }, _Game_render = async function _Game_render(doRedrawCanvas = false) {
         this.store.update();
         const currentRoute = this.router.getCurrentRoute();
         if (currentRoute) {
-            const [route, options] = currentRoute;
-            __classPrivateFieldGet(this, _Game_main, "f").innerHTML = '';
+            const [_, options] = currentRoute;
+            const children = __classPrivateFieldGet(this, _Game_main, "f").children;
+            const childrenToRemove = [];
+            for (let child of children) {
+                let _child = child;
+                if (_child !== __classPrivateFieldGet(this, _Game_canvas, "f")) {
+                    const placeholder = document.createElement("div");
+                    placeholder.style.height = `${_child.getBoundingClientRect().height * 1.25}px`;
+                    placeholder.style.width = `${_child.getBoundingClientRect().width}px`;
+                    _child.replaceWith(placeholder);
+                    childrenToRemove.push(placeholder);
+                }
+            }
             if (options.layoutPath) {
                 await fetch(options.layoutPath)
                     .then(data => {
@@ -128,10 +189,10 @@ define(["require", "exports", "./Constants", "./Router", "./Store"], function (r
                         tempElement.removeChild(script);
                         tempElement.appendChild(newScript);
                     });
-                    __classPrivateFieldGet(this, _Game_main, "f").append(tempElement);
+                    __classPrivateFieldGet(this, _Game_main, "f").insertBefore(tempElement, __classPrivateFieldGet(this, _Game_canvas, "f"));
                 });
             }
-            __classPrivateFieldGet(this, _Game_main, "f").appendChild(__classPrivateFieldGet(this, _Game_canvas, "f"));
+            childrenToRemove.forEach(child => child.remove());
             doRedrawCanvas && __classPrivateFieldGet(this, _Game_instances, "m", _Game_drawCanvas).call(this, options);
         }
     };

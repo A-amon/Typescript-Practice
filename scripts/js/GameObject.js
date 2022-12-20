@@ -11,19 +11,22 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
 };
 define(["require", "exports"], function (require, exports) {
     "use strict";
-    var _GameObject_name, _GameObject_position, _GameObject_options;
+    var _GameObject_name, _GameObject_previousPosition, _GameObject_position, _GameObject_options;
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.GameObject = void 0;
     class GameObject {
         constructor(name, position, options) {
             _GameObject_name.set(this, void 0);
-            _GameObject_position.set(this, void 0); // [x, y]
+            _GameObject_previousPosition.set(this, void 0);
+            _GameObject_position.set(this, void 0);
             _GameObject_options.set(this, void 0);
             __classPrivateFieldSet(this, _GameObject_name, name, "f");
             __classPrivateFieldSet(this, _GameObject_position, Array.isArray(position) ? position : [position, position], "f");
+            __classPrivateFieldSet(this, _GameObject_previousPosition, __classPrivateFieldGet(this, _GameObject_position, "f"), "f");
             __classPrivateFieldSet(this, _GameObject_options, options, "f");
         }
         setPosition(callback) {
+            __classPrivateFieldSet(this, _GameObject_previousPosition, __classPrivateFieldGet(this, _GameObject_position, "f"), "f");
             const newPosition = callback(__classPrivateFieldGet(this, _GameObject_position, "f"));
             __classPrivateFieldSet(this, _GameObject_position, Array.isArray(newPosition) ? newPosition : [newPosition, newPosition], "f");
             return true;
@@ -32,12 +35,12 @@ define(["require", "exports"], function (require, exports) {
             return __classPrivateFieldGet(this, _GameObject_name, "f");
         }
         getPosition() {
-            return __classPrivateFieldGet(this, _GameObject_position, "f");
+            return { previous: __classPrivateFieldGet(this, _GameObject_previousPosition, "f"), current: __classPrivateFieldGet(this, _GameObject_position, "f") };
         }
         getOptions() {
             return __classPrivateFieldGet(this, _GameObject_options, "f");
         }
     }
     exports.GameObject = GameObject;
-    _GameObject_name = new WeakMap(), _GameObject_position = new WeakMap(), _GameObject_options = new WeakMap();
+    _GameObject_name = new WeakMap(), _GameObject_previousPosition = new WeakMap(), _GameObject_position = new WeakMap(), _GameObject_options = new WeakMap();
 });
