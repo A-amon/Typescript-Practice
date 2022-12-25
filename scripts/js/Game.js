@@ -53,8 +53,7 @@ define(["require", "exports", "./Constants", "./Router", "./Store"], function (r
         const _context = _canvas.getContext("2d");
         _canvas.height = __classPrivateFieldGet(this, _Game_main, "f").getBoundingClientRect().height;
         _canvas.width = __classPrivateFieldGet(this, _Game_main, "f").getBoundingClientRect().width;
-        // const context = this.#canvas.getContext("2d")
-        // context!.clearRect(0, 0, this.#canvas.width, this.#canvas.height)
+        let imageStack = []; // Ensure images are drawn in sequence (tile -> game object)
         const { TILES_X_TOTAL, TILES_Y_TOTAL, TILE_HEIGHT, TILE_WIDTH, TILE_COLOR } = Constants_1.constants.TilesOptions;
         const { POSITION } = Constants_1.constants.RouteOptions;
         const { tilesXTotal = TILES_X_TOTAL, tilesYTotal = TILES_Y_TOTAL, tileHeight = TILE_HEIGHT, tileWidth = TILE_WIDTH, tileColor = TILE_COLOR, tileImages = {}, position = POSITION, gameObjects } = options;
@@ -80,7 +79,7 @@ define(["require", "exports", "./Constants", "./Router", "./Store"], function (r
                 _context.beginPath();
                 _context.fillRect(tilePosition.x, tilePosition.y, tileWidth, tileHeight);
                 _context.fillStyle = tileColor;
-                let imageStack = [];
+                // Draw tile images
                 Object.keys(tileImages).forEach(imagePath => {
                     tileImages[imagePath].forEach(position => {
                         if ((position[0] === "row" && position[1] === row) ||
@@ -91,7 +90,7 @@ define(["require", "exports", "./Constants", "./Router", "./Store"], function (r
                             this.router.getImage(imagePath)
                                 .then((image) => {
                                 const interval = setInterval(() => {
-                                    if (imageStack[0] === imagePath) {
+                                    if (imageStack[0] === imagePath) { // Draw image once turn arrives
                                         _context.drawImage(image, tilePosition.x, tilePosition.y, tileWidth, tileHeight);
                                         imageStack.shift();
                                         clearInterval(interval);
@@ -104,6 +103,7 @@ define(["require", "exports", "./Constants", "./Router", "./Store"], function (r
                         }
                     });
                 });
+                // Draw game objects images
                 if (gameObjects) {
                     const _gameObjects = gameObjects.filter(gameObject => {
                         const [x, y] = gameObject.getPosition().current;
@@ -123,7 +123,7 @@ define(["require", "exports", "./Constants", "./Router", "./Store"], function (r
                             this.router.getImage(imagePath)
                                 .then((image) => {
                                 const interval = setInterval(() => {
-                                    if (imageStack[0] === imagePath) {
+                                    if (imageStack[0] === imagePath) { // Draw image once turn arrives
                                         _context.drawImage(image, tilePosition.x + tileWidth / 2 - width / 2, tilePosition.y + tileHeight / 2 - height / 2, width, height);
                                         imageStack.shift();
                                         clearInterval(interval);
@@ -138,9 +138,14 @@ define(["require", "exports", "./Constants", "./Router", "./Store"], function (r
                 }
             }
         }
-        __classPrivateFieldGet(this, _Game_main, "f").appendChild(_canvas);
-        __classPrivateFieldGet(this, _Game_canvas, "f").remove();
-        __classPrivateFieldSet(this, _Game_canvas, _canvas, "f");
+        const updateCanvasInterval = setInterval(() => {
+            if (imageStack.length === 0) {
+                clearInterval(updateCanvasInterval);
+                __classPrivateFieldGet(this, _Game_main, "f").appendChild(_canvas);
+                __classPrivateFieldGet(this, _Game_canvas, "f").remove();
+                __classPrivateFieldSet(this, _Game_canvas, _canvas, "f");
+            }
+        }, 1);
         return this;
     }, _Game_resizeCanvas = function _Game_resizeCanvas() {
         __classPrivateFieldGet(this, _Game_canvas, "f").height = __classPrivateFieldGet(this, _Game_main, "f").getBoundingClientRect().height;
@@ -148,23 +153,23 @@ define(["require", "exports", "./Constants", "./Router", "./Store"], function (r
         const currentRoute = this.router.getCurrentRoute();
         currentRoute && __classPrivateFieldGet(this, _Game_instances, "m", _Game_drawCanvas).call(this, currentRoute[1]);
     }, _Game_render = async function _Game_render(doRedrawCanvas = false) {
+        var _a;
         this.store.update();
         const currentRoute = this.router.getCurrentRoute();
         if (currentRoute) {
             const [_, options] = currentRoute;
-            const children = __classPrivateFieldGet(this, _Game_main, "f").children;
-            const childrenToRemove = [];
-            for (let child of children) {
-                let _child = child;
-                if (_child !== __classPrivateFieldGet(this, _Game_canvas, "f")) {
-                    const placeholder = document.createElement("div");
-                    placeholder.style.height = `${_child.getBoundingClientRect().height * 1.25}px`;
-                    placeholder.style.width = `${_child.getBoundingClientRect().width}px`;
-                    _child.replaceWith(placeholder);
-                    childrenToRemove.push(placeholder);
-                }
-            }
             if (options.layoutPath) {
+                __classPrivateFieldGet(this, _Game_main, "f").style.position = "absolute";
+                /**
+                 * Creates copy of #main and placed on top of existing #main
+                 * To avoid flicker when replacing node
+                 */
+                const _main = document.createElement(__classPrivateFieldGet(this, _Game_main, "f").tagName);
+                const { attributes } = __classPrivateFieldGet(this, _Game_main, "f");
+                for (let i = 0; i < attributes.length; i++) {
+                    _main.setAttribute(attributes[i].nodeName, (_a = attributes[i].nodeValue) !== null && _a !== void 0 ? _a : "");
+                }
+                __classPrivateFieldGet(this, _Game_main, "f").style.zIndex = "-1";
                 await fetch(options.layoutPath)
                     .then(data => {
                     if (!data.ok) {
@@ -173,6 +178,7 @@ define(["require", "exports", "./Constants", "./Router", "./Store"], function (r
                     return data.text();
                 })
                     .then(res => {
+                    // Replace {{...}} with related state's value
                     const tempElement = document.createElement("div");
                     tempElement.innerHTML = res.replace(/\{\{([a-z0-9]+)\}\}/gi, (expression, key) => {
                         try {
@@ -189,10 +195,17 @@ define(["require", "exports", "./Constants", "./Router", "./Store"], function (r
                         tempElement.removeChild(script);
                         tempElement.appendChild(newScript);
                     });
-                    __classPrivateFieldGet(this, _Game_main, "f").insertBefore(tempElement, __classPrivateFieldGet(this, _Game_canvas, "f"));
+                    _main.appendChild(tempElement);
                 });
+                const { parentElement } = __classPrivateFieldGet(this, _Game_main, "f");
+                __classPrivateFieldGet(this, _Game_main, "f").remove();
+                __classPrivateFieldSet(this, _Game_main, _main, "f");
+                parentElement === null || parentElement === void 0 ? void 0 : parentElement.appendChild(_main);
             }
-            childrenToRemove.forEach(child => child.remove());
+            else {
+                __classPrivateFieldGet(this, _Game_main, "f").innerHTML = "";
+            }
+            __classPrivateFieldGet(this, _Game_main, "f").appendChild(__classPrivateFieldGet(this, _Game_canvas, "f"));
             doRedrawCanvas && __classPrivateFieldGet(this, _Game_instances, "m", _Game_drawCanvas).call(this, options);
         }
     };

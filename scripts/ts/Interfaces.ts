@@ -12,6 +12,10 @@ export type RoutePosition = ["left" | "right" | "center", "top" | "bottom" | "ce
  * ["row" | "column", number] - Fill specified row/column  
  * [columnIndex, rowIndex] - Draw image at this coordinate  
  * [columnIndexA, rowIndexA, columnIndexB, rowIndexB] - Fill specified block
+ * E.g.
+ * # # #
+ * # # #
+ * # # #
  */
 export type TileImagePosition = ["row" | "column", number] | [number, number] | [number, number, number, number]
 

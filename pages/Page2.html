@@ -1,6 +1,27 @@
+<style>
+	#collision-message{
+		position:absolute;
+		top:0;
+		right:0;
+		padding: 1rem 2rem;
+		background: indianred;
+		color: white;
+		border-radius: 5px;
+		animation:SlideToLeft 0.3s 1 forwards;
+	}
+
+	@keyframes SlideToLeft{
+		from{
+			transform:translateX(100%);
+		}
+		to{
+			transform:translateX(0%);
+		}
+	}
+</style>
 <div>
 	<h1>Page 2 {{counter}} {{match}}</h1>
-	<p id="collision-message"></p>
+	<p id="collision-message" style="display: none;"></p>
 	<button id="test-btn">Click</button>
 </div>
 <script>
@@ -9,8 +30,11 @@
 			game.updateAfter(() => game.store.set("counter", counter => counter + 1))
 		})
 		const collision = game.store.get("collision")
-		if(collision.name){
-			document.querySelector("#collision-message").textContent = `You hit a ${collision.name} ${collision.count} time${collision.count > 1?'s':''}!`
+		if(collision.showMessage){
+			const collisionMessage = document.querySelector("#collision-message")
+			collisionMessage.textContent = `You hit a ${collision.name} ${collision.count} time${collision.count > 1?'s':''}!`
+			collisionMessage.style.display = "block"
+			game.store.set("collision", collision => ({...collision, showMessage: false}))
 		}
 	})()
 </script>

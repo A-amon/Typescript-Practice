@@ -52,8 +52,8 @@ define(["require", "exports"], function (require, exports) {
         update() {
             if (__classPrivateFieldGet(this, _Store_hasUpdate, "f")) {
                 Object.keys(__classPrivateFieldGet(this, _Store_data, "f")).forEach((key) => {
-                    var _a;
-                    __classPrivateFieldGet(this, _Store_data, "f")[key] = { value: (_a = __classPrivateFieldGet(this, _Store_data, "f")[key].pendingValue) !== null && _a !== void 0 ? _a : __classPrivateFieldGet(this, _Store_data, "f")[key].value };
+                    const { pendingValue, value } = __classPrivateFieldGet(this, _Store_data, "f")[key];
+                    __classPrivateFieldGet(this, _Store_data, "f")[key] = { value: pendingValue !== null && pendingValue !== void 0 ? pendingValue : value };
                 });
                 __classPrivateFieldSet(this, _Store_hasUpdate, false, "f");
             }

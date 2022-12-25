@@ -3,6 +3,9 @@ define(["require", "exports", "./Game", "./GameObject"], function (require, expo
     Object.defineProperty(exports, "__esModule", { value: true });
     const game = new Game_1.Game("app", "Role Playing Game");
     window.game = game;
+    /**
+     * Router setup
+     */
     game.router.addRoutes({
         "Page 1": {},
         "Page 2": {
@@ -30,9 +33,9 @@ define(["require", "exports", "./Game", "./GameObject"], function (require, expo
                     onCollide: (name) => {
                         game.updateAfter(() => game.store.set("collision", (collision) => {
                             if (collision.name) {
-                                return { name, count: collision.count + 1 };
+                                return { name, count: collision.count + 1, showMessage: true };
                             }
-                            return { name, count: 1 };
+                            return { name, count: 1, showMessage: true };
                         }));
                     }
                 }),
@@ -43,12 +46,18 @@ define(["require", "exports", "./Game", "./GameObject"], function (require, expo
             ]
         }
     });
+    /**
+     * Store setup
+     */
     game
         .start()
         .store.initialize({
         "counter": 0,
         "collision": {}
     });
+    /**
+     * Navigation buttons
+     */
     const btnLinks = document.querySelectorAll(".btn-link");
     for (const btnLink of btnLinks) {
         btnLink.addEventListener("click", () => {
@@ -56,6 +65,10 @@ define(["require", "exports", "./Game", "./GameObject"], function (require, expo
             (_a = game.router) === null || _a === void 0 ? void 0 : _a.navigateTo((_b = btnLink.getAttribute("data-goto")) !== null && _b !== void 0 ? _b : "");
         });
     }
+    /**
+     * Adding keyboard controls
+     * Move knight with WASD keys
+     */
     document.addEventListener("keydown", (event) => {
         const knights = game.router.getGameObject("Knight");
         if (knights.length > 0) {

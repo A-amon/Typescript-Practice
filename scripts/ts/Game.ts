@@ -2,7 +2,6 @@ import { GameOptions, RenderCallback, RouteOptions } from "./Interfaces";
 import { constants } from "./Constants";
 import { Router } from "./Router";
 import { Store } from "./Store";
-import { GameObject } from "./GameObject";
 
 export class Game{
 	#options: GameOptions
@@ -55,8 +54,7 @@ export class Game{
 		_canvas.height = this.#main.getBoundingClientRect().height
 		_canvas.width = this.#main.getBoundingClientRect().width
 
-		// const context = this.#canvas.getContext("2d")
-		// context!.clearRect(0, 0, this.#canvas.width, this.#canvas.height)
+		let imageStack:string[] = []	// Ensure images are drawn in sequence (tile -> game object)
 
 		const {TILES_X_TOTAL, TILES_Y_TOTAL, TILE_HEIGHT, TILE_WIDTH, TILE_COLOR} = constants.TilesOptions
 		const {POSITION} = constants.RouteOptions
@@ -96,8 +94,7 @@ export class Game{
 				_context!.fillRect(tilePosition.x, tilePosition.y, tileWidth, tileHeight)
 				_context!.fillStyle = tileColor
 
-				let imageStack:string[] = []
-
+				// Draw tile images
 				Object.keys(tileImages).forEach(imagePath => {
 					tileImages[imagePath].forEach(position => {
 						if((position[0] === "row" && position[1] === row) ||
@@ -109,7 +106,7 @@ export class Game{
 							this.router.getImage(imagePath)
 							.then((image) => {
 								const interval = setInterval(() => {
-									if(imageStack[0] === imagePath){
+									if(imageStack[0] === imagePath){	// Draw image once turn arrives
 										_context!.drawImage(image, tilePosition.x, tilePosition.y, tileWidth, tileHeight)
 										imageStack.shift()
 										clearInterval(interval)
@@ -123,6 +120,7 @@ export class Game{
 					})
 				})
 
+				// Draw game objects images
 				if(gameObjects){
 					const _gameObjects = gameObjects.filter(gameObject => {
 						const [x, y] = gameObject.getPosition().current
@@ -144,7 +142,7 @@ export class Game{
 							this.router.getImage(imagePath)
 							.then((image) => {
 								const interval = setInterval(() => {
-									if(imageStack[0] === imagePath){
+									if(imageStack[0] === imagePath){	// Draw image once turn arrives
 										_context!.drawImage(image, tilePosition.x + tileWidth/2 - width/2, tilePosition.y + tileHeight/2 - height/2, width, height)
 										imageStack.shift()
 										clearInterval(interval)
@@ -160,9 +158,14 @@ export class Game{
 			}
 		}
 
-		this.#main.appendChild(_canvas)
-		this.#canvas.remove()
-		this.#canvas = _canvas
+		const updateCanvasInterval = setInterval(() => {
+			if(imageStack.length === 0){
+				clearInterval(updateCanvasInterval)
+				this.#main.appendChild(_canvas)
+				this.#canvas.remove()
+				this.#canvas = _canvas
+			}
+		}, 1)
 
 		return this
 	}
@@ -181,21 +184,20 @@ export class Game{
 		const currentRoute = this.router.getCurrentRoute()
 		if(currentRoute){
 			const [_, options] = currentRoute
-			const children = this.#main.children
 
-			const childrenToRemove: HTMLElement[] = []
-			for(let child of children){
-				let _child = child as HTMLElement
-				if(_child !== this.#canvas){
-					const placeholder = document.createElement("div")
-					placeholder.style.height = `${_child.getBoundingClientRect().height * 1.25}px`
-					placeholder.style.width = `${_child.getBoundingClientRect().width}px`
-					_child.replaceWith(placeholder)
-					childrenToRemove.push(placeholder)
-				}
-			}
-	
 			if(options.layoutPath){
+				this.#main.style.position = "absolute"
+				/**
+				 * Creates copy of #main and placed on top of existing #main
+				 * To avoid flicker when replacing node
+				 */
+				const _main = document.createElement(this.#main.tagName)
+				const {attributes} = this.#main
+				for(let i=0;i<attributes.length; i++){
+					_main.setAttribute(attributes[i].nodeName, attributes[i].nodeValue??"")
+				}
+				this.#main.style.zIndex = "-1"
+		
 				await fetch(options.layoutPath)
 				.then(data => {
 					if(!data.ok){
@@ -204,6 +206,7 @@ export class Game{
 					return data.text()
 				})
 				.then(res => {
+					// Replace {{...}} with related state's value
 					const tempElement = document.createElement("div")
 					tempElement.innerHTML = res.replace(/\{\{([a-z0-9]+)\}\}/gi, 
 					(expression, key) => {
@@ -223,10 +226,18 @@ export class Game{
 						tempElement.appendChild(newScript)
 					})
 
-					this.#main.insertBefore(tempElement, this.#canvas)
+					_main.appendChild(tempElement)
 				})
+				
+				const {parentElement} = this.#main
+				this.#main.remove()
+				this.#main = _main
+				parentElement?.appendChild(_main)
 			}
-			childrenToRemove.forEach(child => child.remove())
+			else{
+				this.#main.innerHTML = ""
+			}
+			this.#main.appendChild(this.#canvas)
 
 			doRedrawCanvas && this.#drawCanvas(options)
 		}

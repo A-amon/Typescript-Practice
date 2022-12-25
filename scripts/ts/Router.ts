@@ -80,6 +80,11 @@ export class Router extends EventTarget{
 		})
 	}
 
+	/**
+	 * Load image asynchronously when adding route
+	 * To avoid loading/(re)loading images on the spot when needed
+	 * @param path 
+	 */
 	#loadImage(path: string){
 		const image = new Image()
 		image.src = path

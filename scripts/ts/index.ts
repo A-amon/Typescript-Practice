@@ -5,6 +5,9 @@ const game: Game = new Game("app", "Role Playing Game")
 
 window.game = game
 
+/**
+ * Router setup
+ */
 game.router.addRoutes({
 	"Page 1":{},
 	"Page 2":{
@@ -32,9 +35,9 @@ game.router.addRoutes({
 				onCollide:(name) => {
 					game.updateAfter(() => game.store.set("collision", (collision) => {
 						if(collision.name){
-							return {name, count: collision.count + 1}
+							return {name, count: collision.count + 1, showMessage: true}
 						}
-						return {name, count: 1}
+						return {name, count: 1, showMessage: true}
 					}))
 				}
 			}),
@@ -46,6 +49,9 @@ game.router.addRoutes({
 	}
 })
 
+/**
+ * Store setup
+ */
 game
 .start()
 .store.initialize({
@@ -53,6 +59,9 @@ game
 	"collision": {}
 })
 
+/**
+ * Navigation buttons
+ */
 const btnLinks = document.querySelectorAll(".btn-link")
 for(const btnLink of btnLinks){
 	btnLink.addEventListener("click", () => {
@@ -60,6 +69,10 @@ for(const btnLink of btnLinks){
 	})
 }
 
+/**
+ * Adding keyboard controls
+ * Move knight with WASD keys
+ */
 document.addEventListener("keydown", (event) => {
 	const knights = game.router.getGameObject("Knight")
 	if(knights.length > 0){
