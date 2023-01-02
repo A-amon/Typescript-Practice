@@ -11,7 +11,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
 };
 define(["require", "exports", "./Constants", "./Router", "./Store"], function (require, exports, Constants_1, Router_1, Store_1) {
     "use strict";
-    var _Game_instances, _Game_options, _Game_main, _Game_canvas, _Game_drawCanvas, _Game_resizeCanvas, _Game_render;
+    var _Game_instances, _Game_options, _Game_main, _Game_canvas, _Game_domTree, _Game_drawCanvas, _Game_resizeCanvas, _Game_render, _Game_compareAndUpdateDOMTree, _Game_parseDOMTreeToHtml, _Game_parseHTMLToDOMTree, _Game_getUpdatedDOMSlices, _Game_getDOMSlices, _Game_getDOMTree;
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Game = void 0;
     class Game {
@@ -20,6 +20,7 @@ define(["require", "exports", "./Constants", "./Router", "./Store"], function (r
             _Game_options.set(this, void 0);
             _Game_main.set(this, void 0);
             _Game_canvas.set(this, void 0);
+            _Game_domTree.set(this, void 0);
             const mainElement = document.querySelector(`#${id}`);
             if (!mainElement) {
                 throw `${this.constructor.name}: No element with id "${id}" found`;
@@ -44,15 +45,15 @@ define(["require", "exports", "./Constants", "./Router", "./Store"], function (r
         }
         updateAfter(callback) {
             const doRedrawCanvas = callback();
-            __classPrivateFieldGet(this, _Game_instances, "m", _Game_render).call(this, doRedrawCanvas);
+            __classPrivateFieldGet(this, _Game_instances, "m", _Game_render).call(this, doRedrawCanvas, true);
         }
     }
     exports.Game = Game;
-    _Game_options = new WeakMap(), _Game_main = new WeakMap(), _Game_canvas = new WeakMap(), _Game_instances = new WeakSet(), _Game_drawCanvas = function _Game_drawCanvas(options) {
+    _Game_options = new WeakMap(), _Game_main = new WeakMap(), _Game_canvas = new WeakMap(), _Game_domTree = new WeakMap(), _Game_instances = new WeakSet(), _Game_drawCanvas = function _Game_drawCanvas(options) {
         const _canvas = document.createElement("canvas");
         const _context = _canvas.getContext("2d");
-        _canvas.height = __classPrivateFieldGet(this, _Game_main, "f").getBoundingClientRect().height;
-        _canvas.width = __classPrivateFieldGet(this, _Game_main, "f").getBoundingClientRect().width;
+        _canvas.height = __classPrivateFieldGet(this, _Game_canvas, "f").height;
+        _canvas.width = __classPrivateFieldGet(this, _Game_canvas, "f").width;
         let imageStack = []; // Ensure images are drawn in sequence (tile -> game object)
         const { TILES_X_TOTAL, TILES_Y_TOTAL, TILE_HEIGHT, TILE_WIDTH, TILE_COLOR } = Constants_1.constants.TilesOptions;
         const { POSITION } = Constants_1.constants.RouteOptions;
@@ -152,61 +153,233 @@ define(["require", "exports", "./Constants", "./Router", "./Store"], function (r
         __classPrivateFieldGet(this, _Game_canvas, "f").width = __classPrivateFieldGet(this, _Game_main, "f").getBoundingClientRect().width;
         const currentRoute = this.router.getCurrentRoute();
         currentRoute && __classPrivateFieldGet(this, _Game_instances, "m", _Game_drawCanvas).call(this, currentRoute[1]);
-    }, _Game_render = async function _Game_render(doRedrawCanvas = false) {
-        var _a;
+    }, _Game_render = async function _Game_render(doRedrawCanvas = false, isStateUpdate = false) {
         this.store.update();
         const currentRoute = this.router.getCurrentRoute();
         if (currentRoute) {
             const [_, options] = currentRoute;
-            if (options.layoutPath) {
-                __classPrivateFieldGet(this, _Game_main, "f").style.position = "absolute";
-                /**
-                 * Creates copy of #main and placed on top of existing #main
-                 * To avoid flicker when replacing node
-                 */
-                const _main = document.createElement(__classPrivateFieldGet(this, _Game_main, "f").tagName);
-                const { attributes } = __classPrivateFieldGet(this, _Game_main, "f");
-                for (let i = 0; i < attributes.length; i++) {
-                    _main.setAttribute(attributes[i].nodeName, (_a = attributes[i].nodeValue) !== null && _a !== void 0 ? _a : "");
+            if (!isStateUpdate) {
+                __classPrivateFieldGet(this, _Game_main, "f").innerHTML = "";
+                if (options.layoutPath) {
+                    await fetch(options.layoutPath)
+                        .then(data => {
+                        if (!data.ok) {
+                            throw new Error(`${this.constructor.name}: The file "${options.layoutPath}" does not exist`);
+                        }
+                        return data.text();
+                    })
+                        .then(res => {
+                        __classPrivateFieldSet(this, _Game_domTree, __classPrivateFieldGet(this, _Game_instances, "m", _Game_parseHTMLToDOMTree).call(this, res), "f");
+                        __classPrivateFieldGet(this, _Game_main, "f").append(...__classPrivateFieldGet(this, _Game_instances, "m", _Game_parseDOMTreeToHtml).call(this, document.createElement("div"), __classPrivateFieldGet(this, _Game_domTree, "f")).children);
+                        __classPrivateFieldGet(this, _Game_domTree, "f").element = __classPrivateFieldGet(this, _Game_main, "f");
+                    });
                 }
-                __classPrivateFieldGet(this, _Game_main, "f").style.zIndex = "-1";
-                await fetch(options.layoutPath)
-                    .then(data => {
-                    if (!data.ok) {
-                        throw new Error(`${this.constructor.name}: The file "${options.layoutPath}" does not exist`);
-                    }
-                    return data.text();
-                })
-                    .then(res => {
-                    // Replace {{...}} with related state's value
-                    const tempElement = document.createElement("div");
-                    tempElement.innerHTML = res.replace(/\{\{([a-z0-9]+)\}\}/gi, (expression, key) => {
-                        try {
-                            return this.store.get(key);
-                        }
-                        catch (_) {
-                            return expression;
-                        }
-                    });
-                    const scripts = tempElement.querySelectorAll("script");
-                    scripts.forEach(script => {
-                        const newScript = document.createElement("script");
-                        newScript.innerHTML = script.innerHTML;
-                        tempElement.removeChild(script);
-                        tempElement.appendChild(newScript);
-                    });
-                    _main.appendChild(tempElement);
-                });
-                const { parentElement } = __classPrivateFieldGet(this, _Game_main, "f");
-                __classPrivateFieldGet(this, _Game_main, "f").remove();
-                __classPrivateFieldSet(this, _Game_main, _main, "f");
-                parentElement === null || parentElement === void 0 ? void 0 : parentElement.appendChild(_main);
+                __classPrivateFieldGet(this, _Game_main, "f").appendChild(__classPrivateFieldGet(this, _Game_canvas, "f"));
             }
             else {
-                __classPrivateFieldGet(this, _Game_main, "f").innerHTML = "";
+                this.store.update();
+                const newDOMTree = __classPrivateFieldGet(this, _Game_instances, "m", _Game_parseHTMLToDOMTree).call(this, __classPrivateFieldGet(this, _Game_main, "f"));
+                __classPrivateFieldGet(this, _Game_instances, "m", _Game_compareAndUpdateDOMTree).call(this, __classPrivateFieldGet(this, _Game_domTree, "f"), newDOMTree);
             }
-            __classPrivateFieldGet(this, _Game_main, "f").appendChild(__classPrivateFieldGet(this, _Game_canvas, "f"));
             doRedrawCanvas && __classPrivateFieldGet(this, _Game_instances, "m", _Game_drawCanvas).call(this, options);
         }
+    }, _Game_compareAndUpdateDOMTree = function _Game_compareAndUpdateDOMTree(currentDOMTree, newDOMTree) {
+        if (newDOMTree.type === currentDOMTree.type) {
+            if (newDOMTree.type !== "root") {
+                //Update states' values if element's content is same in new DOM
+                //If element's content is updated/different, remove state from element (element's value will be stateless)
+                if (newDOMTree.value === currentDOMTree.value) {
+                    const newSlicesResult = __classPrivateFieldGet(this, _Game_instances, "m", _Game_getUpdatedDOMSlices).call(this, currentDOMTree.slices);
+                    currentDOMTree.slices = newSlicesResult.slices;
+                    currentDOMTree.value = newSlicesResult.value;
+                }
+                else {
+                    currentDOMTree.slices = newDOMTree.slices;
+                    currentDOMTree.value = newDOMTree.value;
+                }
+                if (currentDOMTree.element.firstChild) {
+                    currentDOMTree.element.firstChild.nodeValue = currentDOMTree.value;
+                }
+                currentDOMTree.attributes = currentDOMTree.attributes.filter(attribute => {
+                    const isAttributeInNewDOM = newDOMTree.attributes.find(_attribute => _attribute.name === attribute.name);
+                    if (!isAttributeInNewDOM) {
+                        currentDOMTree.element.removeAttribute(attribute.name);
+                    }
+                    return isAttributeInNewDOM;
+                });
+            }
+            const currentTreeLength = currentDOMTree.children.length;
+            const newTreeLength = newDOMTree.children.length;
+            for (let i = 0; i < Math.max(currentTreeLength, newTreeLength); i++) {
+                if (i < currentTreeLength && i < newTreeLength) {
+                    currentDOMTree.children[i] = __classPrivateFieldGet(this, _Game_instances, "m", _Game_compareAndUpdateDOMTree).call(this, currentDOMTree.children[i], newDOMTree.children[i]);
+                    //Reload script to execute
+                    if (currentDOMTree.children[i].type === "SCRIPT") {
+                        const newScript = document.createElement("script");
+                        newScript.innerHTML = currentDOMTree.children[i].value;
+                        currentDOMTree.element.replaceChild(newScript, currentDOMTree.children[i].element);
+                        currentDOMTree.children[i].element = newScript;
+                    }
+                }
+                else if (i >= currentTreeLength) { //Additional children in new DOM
+                    currentDOMTree.children.push(newDOMTree.children[i]);
+                    currentDOMTree.element = newDOMTree.children[i].element;
+                }
+                else if (i >= newTreeLength) { //Lesser children in new DOM
+                    currentDOMTree.children[i].element.remove();
+                    currentDOMTree.children.pop();
+                    break;
+                }
+            }
+        }
+        else {
+            currentDOMTree = { ...newDOMTree };
+            currentDOMTree.element = newDOMTree.element;
+        }
+        if (currentDOMTree.type !== "root") {
+            const newAttributes = [];
+            for (const attribute of newDOMTree.attributes) {
+                let isAttribute = false;
+                currentDOMTree.attributes.forEach((_attribute, index) => {
+                    isAttribute = _attribute.name === attribute.name;
+                    if (!isAttribute && index === currentDOMTree.attributes.length - 1) {
+                        newAttributes.push(attribute);
+                    }
+                    if (isAttribute) {
+                        const newSlicesResult = __classPrivateFieldGet(this, _Game_instances, "m", _Game_getUpdatedDOMSlices).call(this, _attribute.slices);
+                        _attribute.slices = newSlicesResult.slices;
+                        _attribute.value = newSlicesResult.value;
+                        currentDOMTree.element.setAttribute(_attribute.name, _attribute.value);
+                    }
+                });
+            }
+            currentDOMTree.attributes = [...currentDOMTree.attributes, ...newAttributes];
+        }
+        return currentDOMTree;
+    }, _Game_parseDOMTreeToHtml = function _Game_parseDOMTreeToHtml(parentElement, _domTree) {
+        const { type, value, attributes, children } = _domTree;
+        if (type !== "root") {
+            const newElement = document.createElement(type);
+            newElement.innerHTML = value;
+            for (const attribute of attributes) {
+                newElement.setAttribute(attribute.name, attribute.value);
+            }
+            for (const child of children) {
+                __classPrivateFieldGet(this, _Game_instances, "m", _Game_parseDOMTreeToHtml).call(this, newElement, child);
+            }
+            parentElement.appendChild(newElement);
+            _domTree.element = newElement;
+        }
+        else {
+            for (const child of children) {
+                __classPrivateFieldGet(this, _Game_instances, "m", _Game_parseDOMTreeToHtml).call(this, parentElement, child);
+            }
+        }
+        return parentElement;
+    }, _Game_parseHTMLToDOMTree = function _Game_parseHTMLToDOMTree(html) {
+        const children = [];
+        let _htmlElement;
+        if (typeof (html) === "string") {
+            _htmlElement = document.createElement("div");
+            _htmlElement.innerHTML = html;
+        }
+        else {
+            _htmlElement = html;
+        }
+        for (const child of _htmlElement.children) {
+            if (child !== __classPrivateFieldGet(this, _Game_canvas, "f")) {
+                children.push(__classPrivateFieldGet(this, _Game_instances, "m", _Game_getDOMTree).call(this, child));
+            }
+        }
+        return {
+            type: "root",
+            value: "",
+            slices: [],
+            attributes: [],
+            children
+        };
+    }, _Game_getUpdatedDOMSlices = function _Game_getUpdatedDOMSlices(slices) {
+        const newSlices = slices.map(slice => {
+            if (slice.stateName) {
+                try {
+                    slice.value = this.store.get(slice.stateName);
+                }
+                catch (_a) { }
+            }
+            return slice;
+        });
+        return {
+            value: newSlices.map(slice => slice.value).join(""),
+            slices: newSlices
+        };
+    }, _Game_getDOMSlices = function _Game_getDOMSlices(value) {
+        var _a;
+        const slices = (_a = value.split(/(\{\{[a-zA-Z0-9-_]+\}\})/g)
+            .map(part => {
+            const doMatchStatePattern = (/(\{\{([a-zA-Z0-9-_]+)\}\})/g).test(part);
+            let stateName;
+            let value = part;
+            if (doMatchStatePattern) {
+                try {
+                    stateName = part.slice(2, part.length - 2);
+                    value = this.store.get(stateName);
+                }
+                catch (_a) {
+                    stateName = null;
+                }
+            }
+            return {
+                value,
+                stateName
+            };
+        })
+            /**
+                * Tidy up slices list if exist "false states"
+                * Ex.
+                * Assuming there is only one state defined: "name" = "Kyle"
+                * And the sentence is
+                * Hello world, {{name}} ! I am {{botName}}.
+                * [Note that "botName" is not a valid state as it is not defined]
+                * Hence, the slices would be
+                * Slices:[
+                * 	{value:"Hello world, "},
+                * 	{value:"Kyle", stateName:"name"},
+                * 	{value:" ! I am {{botName}}."}
+                * ]
+                *
+                * Resulting sentence:
+                * Hello world, Kyle ! I am {{botName}}.
+                */
+            .reduce((_slices, current) => {
+            const sliceCount = _slices.length;
+            if (sliceCount >= 1 && ((!_slices[sliceCount - 1].stateName && !current.stateName)
+                || (!current.stateName && !current.value))) {
+                _slices[sliceCount - 1].value = _slices[sliceCount - 1].value + current.value;
+                return _slices;
+            }
+            return [..._slices, current];
+        }, [])) !== null && _a !== void 0 ? _a : [];
+        return {
+            value: slices.map(slice => slice.value).join(""),
+            slices
+        };
+    }, _Game_getDOMTree = function _Game_getDOMTree(element) {
+        var _a, _b;
+        const children = [];
+        for (const child of element.children) {
+            children.push(__classPrivateFieldGet(this, _Game_instances, "m", _Game_getDOMTree).call(this, child));
+        }
+        const attributes = [];
+        for (let i = 0; i < element.attributes.length; i++) {
+            const attribute = element.attributes[i];
+            attributes.push({ name: attribute.nodeName, ...__classPrivateFieldGet(this, _Game_instances, "m", _Game_getDOMSlices).call(this, attribute.value) });
+        }
+        return {
+            type: element.tagName,
+            element,
+            ...__classPrivateFieldGet(this, _Game_instances, "m", _Game_getDOMSlices).call(this, (_b = (_a = element.firstChild) === null || _a === void 0 ? void 0 : _a.nodeValue) !== null && _b !== void 0 ? _b : ""),
+            attributes,
+            children
+        };
     };
 });

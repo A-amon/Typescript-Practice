@@ -20,14 +20,16 @@
 	}
 </style>
 <div>
-	<h1>Page 2 {{counter}} {{match}}</h1>
+	<h1 class="counter-{{counter}}">Page 2 {{counter}} {{match}}</h1>
 	<p id="collision-message" style="display: none;"></p>
 	<button id="test-btn">Click</button>
 </div>
 <script>
 	(() => {
-		document.querySelector("#test-btn")?.addEventListener("click", () => {
+		console.log("counter:{{counter}}")
+		document.querySelector("#test-btn")?.addEventListener("click", (event) => {
 			game.updateAfter(() => game.store.set("counter", counter => counter + 1))
+			event.stopImmediatePropagation()
 		})
 		const collision = game.store.get("collision")
 		if(collision.showMessage){
